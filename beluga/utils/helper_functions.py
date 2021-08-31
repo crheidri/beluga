@@ -33,3 +33,11 @@ def recursive_sub(expr, replace):
             expr = new_expr
 
     return expr, False
+
+
+def get_const(ocp, s, name):
+    for idx,c in enumerate(ocp.constants):
+        if c.name == name:
+            return s.const[idx]
+    raise NameError('constant ' + str(name) + ' not found in OCP.')
+
