@@ -14,7 +14,7 @@ from beluga.symbolic.data_classes.components_structures \
 from beluga.symbolic.differential_geometry \
     import make_standard_symplectic_form, make_hamiltonian_vector_field, noether, is_symplectic
 from beluga.numeric.data_classes.trajectory_mappers \
-    import (MomentumShiftMapper, EpsTrigMapper, IdentityMapper, DualizeMapper, AlgebraicControlMapper, MF,
+    import (MomentumShiftMapper, EpsTrigMapper, GCRMMapper, IdentityMapper, DualizeMapper, AlgebraicControlMapper, MF,
             DifferentialControlMapper, DifferentialControlMapperDiffyG, SquashToBVPMapper, NormalizeTimeMapper)
 from beluga.numeric.data_classes.NumericProblem import NumericProblem
 
@@ -216,6 +216,46 @@ class EpsTrig(GenericFunctor):
 
         # TODO Rewrite mapper
         prob.sol_map_chain.append(EpsTrigMapper(control_idx, constraint.lower, constraint.upper,
+                                                prob.independent_variable.sym,
+                                                np.array([state.sym for state in prob.states]),
+                                                np.array([parameter.sym for parameter in prob.parameters]),
+                                                np.array([constant.sym for constant in prob.constants]),
+                                                local_compiler=prob.local_compiler))
+
+        return prob
+
+
+class GCRM(GenericFunctor):
+    strrep = 'GCRM'
+
+    def transformation(self, prob: Problem) -> Problem:
+        if not prob.sympified:
+            raise ValueError('Problem must be sympified. Hint: did you preprocess the problem?')
+
+        for constraint_idx, _constraint in enumerate(prob.constraints['path']):
+            if _constraint.method.lower() == 'gcrm':
+                constraint = prob.constraints['path'].pop(constraint_idx)
+                control_sym = constraint.expr
+                epsilon = constraint.activator
+                break
+
+        new_control_name = '_' + str(control_sym)
+        new_control_units = prob.cost.path_units / constraint.units
+        new_control = NamedDimensionalStruct(new_control_name, new_control_units, \
+            local_compiler=prob.local_compiler).sympify_self()
+        
+        control_syms = extract_syms(prob.controls)
+        control_idx = control_syms.index(control_sym)
+        prob.controls[control_idx] = new_control
+
+        c0 = (constraint.upper + constraint.lower) / 2
+        c1 = (constraint.upper - constraint.lower) / 2
+
+        prob.cost.path += c1*epsilon*sympy.log(1 + new_control.sym**2/epsilon**2)/sympy.pi
+        prob.subs_all(control_sym, c1*sympy.atan(new_control.sym/epsilon)*2/sympy.pi + c0)
+
+        # TODO Rewrite mapper
+        prob.sol_map_chain.append(GCRMMapper(control_idx, constraint.lower, constraint.upper, constraint.activator,
                                                 prob.independent_variable.sym,
                                                 np.array([state.sym for state in prob.states]),
                                                 np.array([parameter.sym for parameter in prob.parameters]),
@@ -878,6 +918,8 @@ def make_indirect_method(prob: Problem, analytical_jacobian=False, control_metho
                 RFfunctor >>= EpsTrig()
             elif constraint.method.lower() == 'utm':
                 RFfunctor >>= UTM()
+            elif constraint.method.lower() == 'gcrm':
+                RFfunctor >>= GCRM()
             else:
                 raise NotImplementedError(
                     'Unknown path constraint method \"' + str(constraint.method) + '\"')

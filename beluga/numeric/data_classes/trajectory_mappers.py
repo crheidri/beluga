@@ -108,6 +108,45 @@ class EpsTrigMapper(SolMapper):
 
         return sol
 
+class GCRMMapper(SolMapper):
+    def __init__(self, control_idx, lower_expr: sympy.Expr, upper_expr: sympy.Expr, activator: sympy.Expr,
+                 ind_var_sym, state_syms, parameter_syms, constant_syms,
+                 local_compiler: LocalCompiler = None):
+
+        self.control_idx = control_idx
+
+        self.lower_expr = lower_expr
+        self.upper_expr = upper_expr
+
+        self.args = [ind_var_sym, state_syms, parameter_syms, constant_syms]
+
+        if local_compiler is None:
+            self.local_compiler = LocalCompiler()
+        else:
+            self.local_compiler = local_compiler
+
+        u_trig = sympy.Symbol('_u_trig')
+
+        u_min = self.lower_expr
+        u_max = self.upper_expr
+
+        c0 = (u_max + u_min)/2
+        c1 = (u_max - u_min)/2
+
+        u_expr = c1*sympy.atan(u_trig/activator)*2/sympy.pi + c0
+
+        self.inv_map_func = self.local_compiler.lambdify([u_trig] + self.args, u_expr)
+
+    def map(self, sol: Solution) -> Solution:
+        return copy.deepcopy(sol)
+
+    def inv_map(self, sol: Solution) -> Solution:
+        for idx, (t_i, y_i) in enumerate(zip(sol.t, sol.y)):
+            sol.u[idx, self.control_idx] = self.inv_map_func(
+                sol.u[idx, self.control_idx], t_i, y_i, sol.dynamical_parameters, sol.const)
+
+        return sol
+
 
 class DualizeMapper(SolMapper):
     def __init__(self, dual_len, nu_len, ocp: Problem):
