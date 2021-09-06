@@ -22,6 +22,7 @@ class SPBVP(BaseAlgorithm):
     def __init__(self, *args, **kwargs):
         BaseAlgorithm.__init__(self, *args, **kwargs)
         self.max_nodes = kwargs.get('max_nodes', 2000)
+        self.tol = kwargs.get('tol', 1e-3)
 
     def solve(self, solinit, **kwargs):
 
@@ -102,11 +103,11 @@ class SPBVP(BaseAlgorithm):
         if nquads > 0:
             opt = solve_bvp(_fun, _bc, solinit.t, np.hstack((solinit.y, solinit.q)).T,
                             np.hstack((solinit.dynamical_parameters, solinit.nondynamical_parameters)),
-                            max_nodes=self.max_nodes, fun_jac=_fun_jac, bc_jac=_bc_jac)
+                            max_nodes=self.max_nodes, tol=self.tol, fun_jac=_fun_jac, bc_jac=_bc_jac)
         else:
             opt = solve_bvp(_fun, _bc, solinit.t, solinit.y.T,
                             np.hstack((solinit.dynamical_parameters, solinit.nondynamical_parameters)),
-                            max_nodes=self.max_nodes, fun_jac=_fun_jac, bc_jac=_bc_jac)
+                            max_nodes=self.max_nodes, tol=self.tol, fun_jac=_fun_jac, bc_jac=_bc_jac)
 
         sol = Trajectory(solinit)
         sol.t = opt['x']
