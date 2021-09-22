@@ -152,24 +152,8 @@ class Trajectory(object):
         else:
             f = [self.interpolate(self.t, self.u.T[ii]) for ii in range(udim)]
             u_val = np.array([f[ii](t) for ii in range(udim)]).T
-        
-        if ydim == 1:
-            if ycolumn:
-                f = self.interpolate(self.t, self.dual.T[0])
-            else:
-                f = self.interpolate(self.t, self.dual)
 
-            if t.shape == ():
-                dual_val = np.array([f(t)])
-            else:
-                dual_val = np.array(f(t))
-            dual_val = dual_val.T
-
-        else:
-            f = [self.interpolate(self.t, self.dual.T[ii]) for ii in range(ydim)]
-            dual_val = np.array([f[ii](t) for ii in range(ydim)]).T
-
-        return y_val, q_val, u_val, dual_val
+        return y_val, q_val, u_val
 
     def set_interpolate_function(self, func):
         """
