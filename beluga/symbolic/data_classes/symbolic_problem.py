@@ -70,6 +70,7 @@ class Problem:
         self.sympified = False
         self.dualized = False
         self.lambdified = False
+        self.ignore_duplicate=False
 
     def __repr__(self):
         return '{}_{}'.format(self.prob_type, self.name)
@@ -317,7 +318,7 @@ class Problem:
         return self
 
     def check_for_duplicate(self, name):
-        if name in self.local_compiler.sym_locals.keys():
+        if name in self.local_compiler.sym_locals.keys() and not self.ignore_duplicate:
             raise RuntimeWarning('\"{}\" already used. Variable not added'.format(name))
 
     def map_sol(self, sol, inverse=False):
