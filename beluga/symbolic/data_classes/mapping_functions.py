@@ -251,8 +251,11 @@ class GCRM(GenericFunctor):
         c0 = (constraint.upper + constraint.lower) / 2
         c1 = (constraint.upper - constraint.lower) / 2
 
-        prob.cost.path += c1*epsilon*sympy.log(1 + new_control.sym**2/epsilon**2)/sympy.pi
-        prob.subs_all(control_sym, c1*sympy.atan(new_control.sym/epsilon)*2/sympy.pi + c0)
+        u_tilde = c1*sympy.atan(new_control.sym/epsilon)*2/sympy.pi + c0
+        L_tilde = c1*epsilon*sympy.log(1 + new_control.sym**2/epsilon**2)/sympy.pi
+
+        prob.subs_all(control_sym, u_tilde)
+        prob.cost.path += L_tilde
 
         # TODO Rewrite mapper
         prob.sol_map_chain.append(GCRMMapper(control_idx, constraint.lower, constraint.upper, constraint.activator,
